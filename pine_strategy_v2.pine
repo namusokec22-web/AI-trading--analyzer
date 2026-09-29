@@ -1,0 +1,39 @@
+//@version=6
+strategy("AI Trading Analyzer v2 Baseline", overlay=true, pyramiding=0,
+     initial_capital=1000, commission_type=strategy.commission.percent,
+     commission_value=0.05, process_orders_on_close=true)
+
+riskPct = input.float(0.5, "Risk %", minval=0.1, maxval=2.0)
+rr = input.float(2.0, "R:R", minval=1.0, step=0.5)
+atrMult = input.float(1.2, "ATR stop multiplier", minval=0.5)
+
+e20=ta.ema(close,20)
+e50=ta.ema(close,50)
+e200=ta.ema(close,200)
+r=ta.rsi(close,14)
+a=ta.atr(14)
+
+bull=e20>e50 and e50>e200 and close>e20 and r>=45 and r<=70
+bear=e20<e50 and e50<e200 and close<e20 and r>=30 and r<=55
+
+ls=math.min(ta.lowest(low,10), close-atrMult*a)
+ss=math.max(ta.highest(high,10), close+atrMult*a)
+lr=close-ls
+sr=ss-close
+
+if bull and lr>0
+    qty=(strategy.equity*riskPct/100)/lr
+    strategy.entry("BUY","LONG",qty=qty)
+    strategy.exit("BUY EXIT","LONG",stop=ls,limit=close+rr*lr)
+
+if bear and sr>0
+    qty=(strategy.equity*riskPct/100)/sr
+    strategy.entry("SELL","SHORT",qty=qty)
+    strategy.exit("SELL EXIT","SHORT",stop=ss,limit=close-rr*sr)
+
+alertcondition(bull,"BUY candidate","BUY candidate")
+alertcondition(bear,"SELL candidate","SELL candidate")
+
+plot(e20,"EMA 20")
+plot(e50,"EMA 50")
+plot(e200,"EMA 200")
